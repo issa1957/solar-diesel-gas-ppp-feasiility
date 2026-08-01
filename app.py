@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 # ==========================================
 # إعدادات الصفحة والخط العربي
 # ==========================================
-st.set_page_config(page_title="دراسة الجدوى الشاملة - التوأم الرقمي", page_icon="", layout="wide")
+st.set_page_config(page_title="دراسة الجدوى الشاملة - التوأم الرقمي", page_icon="📊", layout="wide")
 
 st.markdown("""
 <style>
@@ -23,18 +23,18 @@ st.markdown("""
 st.title("📈 دراسة الجدوى المالية المقارنة (25 سنة)")
 st.markdown("أداة متقدمة لمقارنة السيناريوهات الاستثمارية للمحطات الهجينة")
 
-st.sidebar.header("⚙️ معلمات الدراسة")
+st.sidebar.header("️ معلمات الدراسة")
 
-col_setup1, col_setup2, col_setup3 = st.sidebar.columns(2)
+# ✅ الإصلاح: تغيير 2 إلى 3
+col_setup1, col_setup2, col_setup3 = st.sidebar.columns(3)
 with col_setup1:
     base_capacity = st.number_input("سعة محطة الوقود الأساسية (MW)", min_value=50, max_value=500, value=100)
 with col_setup2:
     solar_capacity = st.number_input("السعة الشمسية المضافة (MW)", min_value=0, max_value=200, value=30)
+with col_setup3:
+    discount_rate = st.selectbox("معدل الخصم", ["0% (حكومي)", "3% (قروض ميسرة)", "10% (تجاري)"])
 
-discount_rate = st.sidebar.selectbox("معدل الخصم (Discount Rate)", 
-                                      ["0% (محاسبة حكومية)", "3% (قروض ميسرة)", "10% (سوق تجاري)"])
-
-dr_map = {"0% (محاسبة حكومية)": 0.0, "3% (قروض ميسرة)": 0.03, "10% (سوق تجاري)": 0.10}
+dr_map = {"0% (حكومي)": 0.0, "3% (قروض ميسرة)": 0.03, "10% (تجاري)": 0.10}
 dr = dr_map[discount_rate]
 
 st.sidebar.markdown("---")
@@ -126,7 +126,7 @@ df_scenarios = pd.DataFrame(scenarios_data)
 st.dataframe(df_scenarios, use_container_width=True, height=250)
 
 st.markdown("---")
-st.markdown("### 💡 التحليل والتوصيات")
+st.markdown("###  التحليل والتوصيات")
 
 lcoes = [lcoe_1, lcoe_2, lcoe_3, lcoe_4]
 best_idx = np.argmin(lcoes)
@@ -138,14 +138,14 @@ worst_scenario = scenarios_data['السيناريو'][worst_idx]
 savings_vs_worst = ((lcoes[worst_idx] - best_lcoe) / lcoes[worst_idx]) * 100
 
 st.success(f"""
-🎯 **السيناريو الأمثل:** {best_scenario}
+ **السيناريو الأمثل:** {best_scenario}
 * **متوسط تكلفة الطاقة (LCOE):** {best_lcoe*100:.2f} ¢/kWh
 * **التوفير مقارنة بـ {worst_scenario}:** {savings_vs_worst:.1f}%
 * **الوقود الموفر سنوياً:** {annual_solar_mwh/1e3:.1f} ألف MWh
 """)
 
 st.markdown("---")
-st.markdown("###  تحليل نموذج الشراكة (PPP / BOOT)")
+st.markdown("### 🤝 تحليل نموذج الشراكة (PPP / BOOT)")
 
 if best_idx in [2, 3]:
     best_capex = capex_3 if best_idx == 2 else capex_4
@@ -160,7 +160,7 @@ if best_idx in [2, 3]:
     st.info(f"""
     **إذا تم تنفيذ {best_scenario} عبر PPP:**
     * **تكلفة مسبقة على GECOL:** 0.00 $
-    * **سعر شراء الكهرباء المقترح (PPA):** {ppa_price*100:.2f} ¢/kWh
+    * **سعر شراء الكهرباء المقترح (PPA):** {ppa_price*100:.2f} /kWh
     * **توفير GECOL الفوري:** {savings_per_kwh*100:.2f} ¢/kWh
     * **التوفير السنوي:** {annual_savings/1e6:.2f} مليون $/سنة
     * **التوفير التراكمي (20 سنة):** {annual_savings*20/1e6:.2f} مليون $
