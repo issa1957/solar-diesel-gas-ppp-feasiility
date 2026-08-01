@@ -23,12 +23,11 @@ st.markdown("""
 st.title("📈 دراسة الجدوى المالية المقارنة (25 سنة)")
 st.markdown("أداة متقدمة لمقارنة السيناريوهات الاستثمارية للمحطات الهجينة")
 
-st.sidebar.header("️ معلمات الدراسة")
+st.sidebar.header("⚙️ معلمات الدراسة")
 
-# ✅ الإصلاح: تغيير 2 إلى 3
 col_setup1, col_setup2, col_setup3 = st.sidebar.columns(3)
 with col_setup1:
-    base_capacity = st.number_input("سعة محطة الوقود الأساسية (MW)", min_value=50, max_value=500, value=100)
+    base_capacity = st.number_input("سعة الوقود الأساسية (MW)", min_value=50, max_value=500, value=100)
 with col_setup2:
     solar_capacity = st.number_input("السعة الشمسية المضافة (MW)", min_value=0, max_value=200, value=30)
 with col_setup3:
@@ -93,8 +92,12 @@ total_energy_4 = annual_solar_mwh + diesel_energy_actual
 def calculate_lcoe_npv(capex, annual_opex, annual_energy, dr, years):
     lifetime_cost = capex + sum([annual_opex / ((1 + dr)**y) for y in range(1, years+1)])
     lifetime_energy = sum([annual_energy / ((1 + dr)**y) for y in range(1, years+1)])
-    lcoe = lifetime_cost / lifetime_energy if lifetime_energy > 0 else 0
-    return lcoe, lifetime_cost
+    
+    # ✅ الإصلاح هنا: القسمة على 10 لتحويل $/MWh إلى ¢/kWh
+    # لأن 1 $/MWh = 100 cent / 1000 kWh = 0.1 ¢/kWh
+    lcoe_cents_per_kwh = (lifetime_cost / lifetime_energy) * 0.1 if lifetime_energy > 0 else 0
+    
+    return lcoe_cents_per_kwh, lifetime_cost
 
 lcoe_1, npv_1 = calculate_lcoe_npv(capex_1, opex_1, annual_gas_mwh, dr, PROJECT_YEARS)
 lcoe_2, npv_2 = calculate_lcoe_npv(capex_2, opex_2, annual_diesel_mwh, dr, PROJECT_YEARS)
@@ -116,8 +119,8 @@ scenarios_data = {
                         f"{capex_3/1e6:.2f}", f"{capex_4/1e6:.2f}"],
     'OPEX سنوي (مليون $)': [f"{opex_1/1e6:.2f}", f"{opex_2/1e6:.2f}", 
                             f"{opex_3/1e6:.2f}", f"{opex_4/1e6:.2f}"],
-    'LCOE (¢/kWh)': [f"{lcoe_1*100:.2f}", f"{lcoe_2*100:.2f}", 
-                     f"{lcoe_3*100:.2f}", f"{lcoe_4*100:.2f}"],
+    'LCOE (¢/kWh)': [f"{lcoe_1:.2f}", f"{lcoe_2:.2f}", 
+                     f"{lcoe_3:.2f}", f"{lcoe_4:.2f}"], # ✅ إزالة الضرب في 100
     'NPV لـ 25 سنة (مليون $)': [f"{npv_1/1e6:.0f}", f"{npv_2/1e6:.0f}", 
                                 f"{npv_3/1e6:.0f}", f"{npv_4/1e6:.0f}"]
 }
@@ -126,7 +129,7 @@ df_scenarios = pd.DataFrame(scenarios_data)
 st.dataframe(df_scenarios, use_container_width=True, height=250)
 
 st.markdown("---")
-st.markdown("###  التحليل والتوصيات")
+st.markdown("### 💡 التحليل والتوصيات")
 
 lcoes = [lcoe_1, lcoe_2, lcoe_3, lcoe_4]
 best_idx = np.argmin(lcoes)
@@ -138,30 +141,29 @@ worst_scenario = scenarios_data['السيناريو'][worst_idx]
 savings_vs_worst = ((lcoes[worst_idx] - best_lcoe) / lcoes[worst_idx]) * 100
 
 st.success(f"""
- **السيناريو الأمثل:** {best_scenario}
-* **متوسط تكلفة الطاقة (LCOE):** {best_lcoe*100:.2f} ¢/kWh
+🎯 **السيناريو الأمثل:** {best_scenario}
+* **متوسط تكلفة الطاقة (LCOE):** {best_lcoe:.2f} ¢/kWh
 * **التوفير مقارنة بـ {worst_scenario}:** {savings_vs_worst:.1f}%
-* **الوقود الموفر سنوياً:** {annual_solar_mwh/1e3:.1f} ألف MWh
+* **الطاقة الشمسية المضافة سنوياً:** {annual_solar_mwh/1e3:.1f} ألف MWh
 """)
 
 st.markdown("---")
 st.markdown("### 🤝 تحليل نموذج الشراكة (PPP / BOOT)")
 
 if best_idx in [2, 3]:
-    best_capex = capex_3 if best_idx == 2 else capex_4
     best_annual_energy = total_energy_3 if best_idx == 2 else total_energy_4
-    
-    ppa_price = best_lcoe * 1.2
     gecol_baseline_lcoe = lcoe_1 if best_idx == 2 else lcoe_2
     
+    # هامش ربح 20% للمطور
+    ppa_price = best_lcoe * 1.2 
     savings_per_kwh = gecol_baseline_lcoe - ppa_price
-    annual_savings = savings_per_kwh * best_annual_energy
+    annual_savings = (savings_per_kwh / 100) * (best_annual_energy * 1000) # تحويل ¢/kWh إلى $
     
     st.info(f"""
     **إذا تم تنفيذ {best_scenario} عبر PPP:**
     * **تكلفة مسبقة على GECOL:** 0.00 $
-    * **سعر شراء الكهرباء المقترح (PPA):** {ppa_price*100:.2f} /kWh
-    * **توفير GECOL الفوري:** {savings_per_kwh*100:.2f} ¢/kWh
+    * **سعر شراء الكهرباء المقترح (PPA):** {ppa_price:.2f} ¢/kWh
+    * **توفير GECOL الفوري:** {savings_per_kwh:.2f} ¢/kWh
     * **التوفير السنوي:** {annual_savings/1e6:.2f} مليون $/سنة
     * **التوفير التراكمي (20 سنة):** {annual_savings*20/1e6:.2f} مليون $
     """)
@@ -174,7 +176,7 @@ st.markdown("### 📈 الرسوم البيانية للمقارنة")
 fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
 scenarios = scenarios_data['السيناريو']
-lcoe_values = [lcoe_1*100, lcoe_2*100, lcoe_3*100, lcoe_4*100]
+lcoe_values = lcoes # ✅ استخدام القيم المصححة مباشرة
 colors = ['#1f77b4', '#d62728', '#2ca02c', '#ff7f0e']
 
 bars = axes[0].bar(scenarios, lcoe_values, color=colors, alpha=0.8)
@@ -184,7 +186,7 @@ axes[0].tick_params(axis='x', rotation=45)
 axes[0].grid(True, alpha=0.3, axis='y')
 
 for bar, value in zip(bars, lcoe_values):
-    axes[0].text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.5, 
+    axes[0].text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.2, 
                 f'{value:.2f}', ha='center', va='bottom', fontweight='bold')
 
 capex_values = [capex_1/1e6, capex_2/1e6, capex_3/1e6, capex_4/1e6]
